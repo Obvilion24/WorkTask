@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../config/db.php'; 
+require_once '../config/db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
@@ -8,10 +8,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($action == 'register') {
         $username = trim($_POST['username']);
         $password = trim($_POST['password']);
-        $email = trim($_POST['email']) ?: null; 
+        $confirm_password = trim($_POST['confirm_password']); // Lấy mật khẩu xác nhận
+        $email = trim($_POST['email']) ?: null;
 
-        if (empty($username) || empty($password)) {
-            header('Location: ../register.php?error=Tên đăng nhập và mật khẩu là bắt buộc');
+        if (empty($username) || empty($password) || empty($confirm_password)) {
+            header('Location: ../register.php?error=Vui lòng điền đầy đủ các trường bắt buộc');
+            exit;
+        }
+
+        if ($password !== $confirm_password) {
+            header('Location: ../register.php?error=Mật khẩu xác nhận không khớp!');
+            exit;
+        }
+
+        if (strlen($password) < 6) {
+            header('Location: ../register.php?error=Mật khẩu phải có ít nhất 6 ký tự');
             exit;
         }
 
@@ -40,10 +51,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit;
 
         } catch (PDOException $e) {
-            header('Location: ../register.php?error=Đã xảy ra lỗi, vui lòng thử lại.');
+            header('Location: ../register.php?error=Đã xảy ra lỗi hệ thống.');
             exit;
         }
     }
+
     if ($action == 'login') {
         $username = trim($_POST['username']);
         $password = trim($_POST['password']);
@@ -64,7 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 
-                header('Location: ../menu.php'); // Sửa: ../index.php -> ../menu.php
+                header('Location: ../menu.php');
                 exit;
             } else {
                 header('Location: ../login.php?error=Tên đăng nhập hoặc mật khẩu không đúng');
@@ -72,13 +84,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
         } catch (PDOException $e) {
-            header('Location: ../login.php?error=Đã xảy ra lỗi: ' . $e->getMessage());
+            header('Location: ../login.php?error=Lỗi hệ thống: ' . $e->getMessage());
             exit;
         }
     }
 
 } else {
-    header('Location: ../menu.php'); 
+    header('Location: ../menu.php');
     exit;
 }
 ?>

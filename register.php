@@ -1,14 +1,14 @@
 <?php 
 session_start();
 if (isset($_SESSION['user_id'])) {
-    header('Location: menu.php'); 
+    header('Location: menu.php');
     exit;
 }
 require_once 'includes/header.php'; 
 ?>
 
 <div class="card shadow">
-    <div class="card-header bg-primary text-white">
+    <div class="card-header bg-success text-white">
         <h3 class="text-center mb-0">Đăng Ký Tài Khoản</h3>
     </div>
     <div class="card-body">
@@ -23,7 +23,7 @@ require_once 'includes/header.php';
             <input type="hidden" name="action" value="register">
             
             <div class="mb-3">
-                <label for="username" class="form-label">Tên đăng nhập</label>
+                <label for="username" class="form-label">Tên đăng nhập (*)</label>
                 <input type="text" class="form-control" id="username" name="username" required>
             </div>
             <div class="mb-3">
@@ -31,15 +31,21 @@ require_once 'includes/header.php';
                 <input type="email" class="form-control" id="email" name="email">
             </div>
             <div class="mb-3">
-                <label for="password" class="form-label">Mật khẩu</label>
+                <label for="password" class="form-label">Mật khẩu (*)</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
+            
+            <div class="mb-3">
+                <label for="confirm_password" class="form-label">Xác nhận mật khẩu (*)</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+            </div>
+
             <div class="d-grid">
-                <button type="submit" class="btn btn-primary">Đăng Ký</button>
+                <button type="submit" class="btn btn-success">Đăng Ký</button>
             </div>
         </form>
         <hr>
-        <p class="text-center">Đã có tài khoản? <a href="login.php">Đăng nhập ngay</a></p>
+        <p class="text-center">Đã có tài khoản? <a href="login.php" class="text-success fw-bold">Đăng nhập ngay</a></p>
     </div>
 </div>
 
