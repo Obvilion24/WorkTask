@@ -1,6 +1,49 @@
 <?php
 require_once 'includes/check.php'; 
 require_once 'config/db.php';
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'change_bg') {
+    if (isset($_FILES['bg_file']) && $_FILES['bg_file']['error'] == 0) {
+        $allowed_videos = ['mp4', 'webm', 'ogg'];
+        $allowed_images = ['jpg', 'jpeg', 'png', 'gif'];
+        
+        $filename = $_FILES['bg_file']['name'];
+        $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));     
+        $target_dir = "assets/";      
+        $new_filename = uniqid() . "." . $file_ext;
+        $target_file = $target_dir . $new_filename;
+        $type = '';
+        if (in_array($file_ext, $allowed_videos)) {
+            $type = 'video';
+        } elseif (in_array($file_ext, $allowed_images)) {
+            $type = 'image';
+        } else {
+            echo "<script>alert('Chỉ chấp nhận file ảnh hoặc video!');</script>";
+        }
+
+        if ($type) {
+            if (move_uploaded_file($_FILES['bg_file']['tmp_name'], $target_file)) {
+                $stmt = $pdo->prepare("UPDATE users SET bg_type = :type, bg_url = :url WHERE id = :uid");
+                $stmt->execute(['type' => $type, 'url' => $target_file, 'uid' => $current_user_id]);
+                header("Location: menu.php");
+                exit;
+            } else {
+                echo "<script>alert('Lỗi khi lưu file vào thư mục assets!');</script>";
+            }
+        }
+    } elseif (isset($_POST['reset_bg'])) {
+        $stmt = $pdo->prepare("UPDATE users SET bg_type = 'video', bg_url = 'assets/VD.mp4' WHERE id = :uid");
+        $stmt->execute(['uid' => $current_user_id]);
+        header("Location: menu.php");
+        exit;
+    }
+}
+
+$stmt_user = $pdo->prepare("SELECT bg_type, bg_url FROM users WHERE id = :uid");
+$stmt_user->execute(['uid' => $current_user_id]);
+$user_pref = $stmt_user->fetch();
+
+$bg_type = $user_pref['bg_type'] ?? 'video';
+$bg_url = $user_pref['bg_url'] ?? 'assets/VD.mp4';
 
 $stmt_groups = $pdo->prepare("SELECT * FROM task_groups WHERE user_id = :uid ORDER BY created_at DESC");
 $stmt_groups->execute(['uid' => $current_user_id]);
@@ -28,37 +71,23 @@ $all_tasks = $stmt->fetchAll();
 $count_pending = 0;
 $count_in_progress = 0;
 $urgent_tasks = []; 
-
 $today = date('Y-m-d');
 $tomorrow = date('Y-m-d', strtotime('+1 day'));
 $yesterday = date('Y-m-d', strtotime('-1 day')); 
-
 $tasks_by_group = [];
 $tasks_uncategorized = [];
 
 foreach ($all_tasks as $task) {
-    if ($task['group_id']) {
-        $tasks_by_group[$task['group_id']][] = $task;
-    } else {
-        $tasks_uncategorized[] = $task;
-    }
+    if ($task['group_id']) { $tasks_by_group[$task['group_id']][] = $task; } 
+    else { $tasks_uncategorized[] = $task; }
 
-    if ($task['status'] == 'pending') {
-        $count_pending++;
-    } elseif ($task['status'] == 'in_progress') {
-        $count_in_progress++;
-    }
+    if ($task['status'] == 'pending') { $count_pending++; } 
+    elseif ($task['status'] == 'in_progress') { $count_in_progress++; }
 
     if ($task['status'] != 'completed' && !empty($task['due_date'])) {
-        if ($task['due_date'] == $yesterday) {
-            $urgent_tasks[] = "Vừa quá hạn hôm qua: " . $task['title'];
-        } 
-        elseif ($task['due_date'] == $today) {
-            $urgent_tasks[] = "Hạn chót hôm nay: " . $task['title'];
-        } 
-        elseif ($task['due_date'] == $tomorrow) {
-            $urgent_tasks[] = "Hạn ngày mai: " . $task['title'];
-        }
+        if ($task['due_date'] == $yesterday) { $urgent_tasks[] = "Vừa quá hạn hôm qua: " . $task['title']; } 
+        elseif ($task['due_date'] == $today) { $urgent_tasks[] = "Hạn chót hôm nay: " . $task['title']; } 
+        elseif ($task['due_date'] == $tomorrow) { $urgent_tasks[] = "Hạn ngày mai: " . $task['title']; }
     }
 }
 ?>
@@ -72,109 +101,75 @@ foreach ($all_tasks as $task) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     
     <style>
-        body {
-            background-image: url('assets/BK.jpg'); 
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-position: center center;
-        }
-        .card, .modal-content, .list-group-item, .accordion-item {
-            background-color: rgba(255, 255, 255, 0.9) !important;
-            backdrop-filter: blur(5px);
-            border: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .accordion-button:not(.collapsed) {
-            background-color: #e7f1ff;
-            color: #0c63e4;
-            box-shadow: none;
-        }
-        input::-webkit-calendar-picker-indicator {
-            opacity: 1 !important;
-            display: block !important;
-            cursor: pointer;
-        }
-        .top-banner-image {
-            width: 100%;
-            height: 500px; 
-            border-radius: 15px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            background-color: #f8f9fa; 
-            text-align: center; 
-        }
-        .top-banner-image img {
-            height: 100%;       
-            width: auto;        
-            max-width: 100%;    
-            object-fit: contain; 
-        }
 
-        .dashboard-banner {
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-            border-left: 5px solid #0d6efd;
+        <?php if ($bg_type == 'image'): ?>
+            body {
+                background-image: url('<?= $bg_url ?>'); 
+                background-size: cover;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+                background-position: center center;
+            }
+        <?php endif; ?>
+
+        <?php if ($bg_type == 'video'): ?>
+            #bg-video {
+                position: fixed; right: 0; bottom: 0;
+                min-width: 100%; min-height: 100%;
+                width: auto; height: auto; z-index: -100;
+                background-size: cover; object-fit: cover;
+            }
+        <?php endif; ?>
+
+        .card, .modal-content, .list-group-item, .accordion-item, .dashboard-banner {
+            background-color: rgba(255, 255, 255, 0.6) !important;
+            backdrop-filter: blur(15px) !important;
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+            color: #000;
         }
-        .clock-box {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            border-right: 1px solid #ddd;
-        }
-        .time-text { font-size: 2.5rem; font-weight: bold; color: #333; line-height: 1; }
-        .date-text { font-size: 1.1rem; color: #666; margin-top: 5px;}
         
-        .status-bar {
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .bar-pending { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-        .bar-progress { background-color: #fff3cd; color: #664d03; border: 1px solid #ffecb5; }
-        
-        .urgent-box {
-            background-color: #fff;
-            border: 1px dashed #dc3545;
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 0.9rem;
-            max-height: 100px;
-            overflow-y: auto;
-        }
+        .accordion-button:not(.collapsed) { background-color: rgba(13, 110, 253, 0.2); color: #000; box-shadow: none; }
+        .accordion-button { background-color: transparent; color: #000; font-weight: bold; }
+        input::-webkit-calendar-picker-indicator { opacity: 1 !important; display: block !important; cursor: pointer; }
+
+        .dashboard-banner { border-radius: 15px; padding: 20px; margin-bottom: 30px; border-left: 5px solid #0d6efd; }
+        .clock-box { text-align: center; border-right: 1px solid rgba(0,0,0,0.1); }
+        .time-text { font-size: 2.5rem; font-weight: bold; color: #000; line-height: 1; text-shadow: 0 0 10px rgba(255,255,255,0.8); }
+        .date-text { font-size: 1.1rem; color: #333; margin-top: 5px; font-weight: 500;}
+        .status-bar { padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .bar-pending { background-color: rgba(248, 215, 218, 0.9); color: #842029; }
+        .bar-progress { background-color: rgba(255, 243, 205, 0.9); color: #664d03; }
+        .urgent-box { background-color: rgba(255,255,255,0.5); border: 1px dashed #dc3545; border-radius: 8px; padding: 10px; font-size: 0.9rem; max-height: 100px; overflow-y: auto; }
         .urgent-item { color: #dc3545; font-weight: bold; display: block; margin-bottom: 4px; }
-
-        @media (max-width: 768px) {
-            .clock-box { border-right: none; border-bottom: 1px solid #ddd; padding-bottom: 15px; margin-bottom: 15px; }
-        }
+        @media (max-width: 768px) { .clock-box { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 15px; margin-bottom: 15px; } }
     </style>
 </head>
 <body class="bg-light" onload="startTime()">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
+    <?php if ($bg_type == 'video'): ?>
+        <video autoplay muted loop id="bg-video">
+            <source src="<?= $bg_url ?>" type="video/mp4">
+        </video>
+    <?php endif; ?>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top" style="opacity: 0.95;">
     <div class="container">
         <a class="navbar-brand" href="menu.php">ToDo App</a>
-        <div class="d-flex align-items-center">
-            <span class="navbar-text me-3 text-white d-none d-sm-block">
+        <div class="d-flex align-items-center gap-3">
+            <span class="navbar-text text-white d-none d-sm-block">
                 Hi, <strong><?= htmlspecialchars($current_username) ?></strong>
             </span>
+            <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#settingsModal" title="Đổi hình nền">
+                <i class="bi bi-gear-fill"></i>
+            </button>
             <a class="btn btn-sm btn-danger" href="logout.php">Thoát</a>
         </div>
     </div>
 </nav>
 
 <div class="container mt-4">
-
-   <div class="top-banner-image">
-        <img src="assets/A1.jpg" alt="Banner Poster">
-    </div>
 
     <div class="dashboard-banner">
         <div class="row align-items-center">
@@ -184,19 +179,19 @@ foreach ($all_tasks as $task) {
             </div>
             <div class="col-md-4">
                 <div class="status-bar bar-pending">
-                    <span><i class="bi bi-hourglass-split me-2"></i> Công việc chưa làm</span>
+                    <span><i class="bi bi-hourglass-split me-2"></i> Chưa làm</span>
                     <span class="badge bg-danger rounded-pill"><?= $count_pending ?></span>
                 </div>
                 <div class="status-bar bar-progress">
-                    <span><i class="bi bi-gear-wide-connected me-2"></i> Đang thực hiện</span>
+                    <span><i class="bi bi-gear-wide-connected me-2"></i> Đang làm</span>
                     <span class="badge bg-warning text-dark rounded-pill"><?= $count_in_progress ?></span>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="fw-bold mb-2 text-danger"><i class="bi bi-alarm"></i> Cần chú ý:</div>
+                <div class="fw-bold mb-2 text-danger" style="text-shadow: 0 0 5px white;"><i class="bi bi-alarm"></i> Cần chú ý:</div>
                 <div class="urgent-box">
                     <?php if (empty($urgent_tasks)): ?>
-                        <span class="text-success"><i class="bi bi-check-circle"></i> Không có việc gấp!</span>
+                        <span class="text-success fw-bold"><i class="bi bi-check-circle"></i> Không có việc gấp!</span>
                     <?php else: ?>
                         <?php foreach ($urgent_tasks as $msg): ?>
                             <span class="urgent-item"><i class="bi bi-exclamation-circle-fill"></i> <?= htmlspecialchars($msg) ?></span>
@@ -214,9 +209,9 @@ foreach ($all_tasks as $task) {
             </button>
         </div>
         <div class="col-md-6 d-flex justify-content-md-end justify-content-center">
-            <form method="GET" action="menu.php" class="d-flex gap-2 align-items-center bg-white p-2 rounded shadow-sm" style="opacity: 0.9;">
+            <form method="GET" action="menu.php" class="d-flex gap-2 align-items-center p-2 rounded shadow-sm" style="background-color: rgba(255,255,255,0.8);">
                 <label class="small fw-bold">Lọc:</label>
-                <select name="filter_status" class="form-select form-select-sm border-0 bg-light" onchange="this.form.submit()">
+                <select name="filter_status" class="form-select form-select-sm border-0 bg-transparent fw-bold" onchange="this.form.submit()">
                     <option value="all" <?= $filter_status == 'all' ? 'selected' : '' ?>>Tất cả</option>
                     <option value="pending" <?= $filter_status == 'pending' ? 'selected' : '' ?>>Chưa làm</option>
                     <option value="in_progress" <?= $filter_status == 'in_progress' ? 'selected' : '' ?>>Đang làm</option>
@@ -278,12 +273,12 @@ foreach ($all_tasks as $task) {
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $g_id ?>">
                         <i class="bi bi-folder2-open me-2 text-warning"></i> <?= htmlspecialchars($group['name']) ?> 
-                        <span class="badge bg-light text-dark ms-2 border"><?= $count ?></span>
+                        <span class="badge bg-dark text-white ms-2 border"><?= $count ?></span>
                     </button>
                 </h2>
                 <div id="collapse<?= $g_id ?>" class="accordion-collapse collapse" data-bs-parent="#taskAccordion">
                     <div class="accordion-body p-0">
-                        <div class="text-end p-2 bg-light border-bottom">
+                        <div class="text-end p-2 border-bottom" style="background-color: rgba(0,0,0,0.05);">
                             <form action="chucnang/CRUD.php" method="POST" onsubmit="return confirm('Xóa nhóm này?');">
                                 <input type="hidden" name="action" value="delete_group">
                                 <input type="hidden" name="group_id" value="<?= $g_id ?>">
@@ -305,7 +300,7 @@ foreach ($all_tasks as $task) {
                 <h2 class="accordion-header">
                     <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUncat">
                         <i class="bi bi-list-task me-2 text-primary"></i> Công việc chung
-                        <span class="badge bg-light text-dark ms-2 border"><?= count($tasks_uncategorized) ?></span>
+                        <span class="badge bg-dark text-white ms-2 border"><?= count($tasks_uncategorized) ?></span>
                     </button>
                 </h2>
                 <div id="collapseUncat" class="accordion-collapse collapse show" data-bs-parent="#taskAccordion">
@@ -345,9 +340,7 @@ foreach ($all_tasks as $task) {
                                 <option value="completed" style="background:white;color:black" <?= $task['status']=='completed'?'selected':'' ?>>Xong</option>
                             </select>
                         </form>
-                        <button class="btn btn-sm btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal<?= $task['id'] ?>">
-                            <i class="bi bi-pencil"></i>
-                        </button>
+                        <button class="btn btn-sm btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#editTaskModal<?= $task['id'] ?>"><i class="bi bi-pencil"></i></button>
                         <form action="chucnang/CRUD.php" method="POST" onsubmit="return confirm('Xóa?');">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
@@ -402,6 +395,42 @@ foreach ($all_tasks as $task) {
     </div>
 <?php endforeach; ?>
 
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-images me-2"></i> Đổi Hình Nền</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form action="menu.php" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="change_bg">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn ảnh hoặc video từ máy:</label>
+                        <input type="file" class="form-control" name="bg_file" required accept="image/*,video/mp4,video/webm">
+                        <div class="form-text small">Hỗ trợ: JPG, PNG, MP4, WEBM. File sẽ được lưu vào thư mục assets.</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-upload me-2"></i> Tải lên & Áp dụng ngay
+                        </button>
+                    </div>
+                </form>
+                <hr>
+                <form action="menu.php" method="POST">
+                    <input type="hidden" name="reset_bg" value="1">
+                    <input type="hidden" name="action" value="change_bg">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-arrow-counterclockwise me-2"></i> Quay về Video mặc định (VD.mp4)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     function startTime() {
@@ -412,10 +441,7 @@ foreach ($all_tasks as $task) {
         let day = today.getDate();
         let month = today.getMonth() + 1;
         let year = today.getFullYear();
-        m = checkTime(m);
-        s = checkTime(s);
-        day = checkTime(day);
-        month = checkTime(month);
+        m = checkTime(m); s = checkTime(s); day = checkTime(day); month = checkTime(month);
         document.getElementById('clock').innerHTML =  h + ":" + m + ":" + s;
         document.getElementById('date').innerHTML = "Ngày " + day + "/" + month + "/" + year;
         setTimeout(startTime, 1000);
