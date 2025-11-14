@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th10 13, 2025 lúc 05:24 PM
+-- Thời gian đã tạo: Th10 14, 2025 lúc 05:45 AM
 -- Phiên bản máy phục vụ: 8.0.44
 -- Phiên bản PHP: 8.2.12
 
@@ -83,15 +83,16 @@ CREATE TABLE `users` (
   `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `bg_type` enum('video','image') COLLATE utf8mb4_unicode_ci DEFAULT 'video',
-  `bg_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'assets/VD.mp4'
+  `bg_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT 'assets/VD.mp4',
+  `reward_progress` int NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Đang đổ dữ liệu cho bảng `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password`, `email`, `created_at`, `bg_type`, `bg_url`) VALUES
-(1, 'trung', '$2y$10$fTTGPNp5celmJTY0ztgme..73LMaycu4TMSf.7IDlVrMyFTgKUq.e', 'trungkith0812@gmail.com', '2025-11-12 15:59:23', 'video', 'assets/VD.mp4');
+INSERT INTO `users` (`id`, `username`, `password`, `email`, `created_at`, `bg_type`, `bg_url`, `reward_progress`) VALUES
+(1, 'trung', '$2y$10$fTTGPNp5celmJTY0ztgme..73LMaycu4TMSf.7IDlVrMyFTgKUq.e', 'trungkith0812@gmail.com', '2025-11-12 15:59:23', 'video', 'assets/VD.mp4', 0);
 
 --
 -- Chỉ mục cho các bảng đã đổ
