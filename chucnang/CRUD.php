@@ -40,23 +40,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ]);
                 break;
 
+
             case 'update_status':
                 $task_id = $_POST['task_id'];
                 $new_status = $_POST['status'];
 
-                $stmt_old = $pdo->prepare("SELECT status FROM tasks WHERE id = :tid AND user_id = :uid");
-                $stmt_old->execute(['tid' => $task_id, 'uid' => $current_user_id]);
-                $old_status = $stmt_old->fetchColumn();
-
                 $sql = "UPDATE tasks SET status = :status WHERE id = :task_id AND user_id = :user_id";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute(['status' => $new_status, 'task_id' => $task_id, 'user_id' => $current_user_id]);
-
-                if ($new_status == 'completed' && $old_status != 'completed') {
-                    $stmt_reward = $pdo->prepare("UPDATE users SET reward_progress = reward_progress + 1 WHERE id = :user_id");
-                    $stmt_reward->execute(['user_id' => $current_user_id]);
-                }
                 break;
+
 
             case 'update_details':
                 $task_id = $_POST['task_id'];
@@ -84,29 +77,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ]);
                 break;
 
+
             case 'delete':
                 $sql = "DELETE FROM tasks WHERE id = :task_id AND user_id = :user_id";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute(['task_id' => $_POST['task_id'], 'user_id' => $current_user_id]);
                 break;
-
+                
             case 'delete_group':
                 $sql = "DELETE FROM task_groups WHERE id = :group_id AND user_id = :user_id";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute(['group_id' => $_POST['group_id'], 'user_id' => $current_user_id]);
-                break;
-
-            case 'claim_reward':
-
-                $stmt_check = $pdo->prepare("SELECT reward_progress FROM users WHERE id = :user_id");
-                $stmt_check->execute(['user_id' => $current_user_id]);
-                $progress = $stmt_check->fetchColumn();
-                if ($progress >= 5) {
-                    $stmt_claim = $pdo->prepare("UPDATE users SET reward_progress = reward_progress - 5 WHERE id = :user_id");
-                    $stmt_claim->execute(['user_id' => $current_user_id]);
-                    header('Location: ../menu.php?reward=1');
-                    exit;
-                }
                 break;
         }
     } catch (PDOException $e) {
