@@ -1,2 +1,0 @@
-# PHP-taskmanager
-PHP Exercise
